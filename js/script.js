@@ -11,7 +11,7 @@ var format = d3.format(",d"),
     dbar,
     brushCell,
     topObject = {},
-    padding = 1, // separation between nodes
+    padding = 5, // separation between nodes
     rad = 10;
 
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
@@ -119,10 +119,21 @@ d3.json("McAfeeDataImportance.json", function(error, json) {
         .attr("y2", height)
         .classed("lift-line", true);
     
-    update();
+  hbar = svg.append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", height)
+        .attr("y2", height)
+        .classed("lift-line", true);
     
-
-
+  vbar = svg.append("line")
+        .attr("x1", 0)
+        .attr("x2", 0)
+        .attr("y1", 0)
+        .attr("y2", height)
+        .classed("lift-line", true);
+    
+    update();
 });
 
 function update() {
@@ -138,9 +149,9 @@ function update() {
         })
         .size([width, height])
         .on("tick", tick)
-        .charge(-1)
+        .charge(-10)
         .gravity(0)
-        .chargeDistance(5);
+        .chargeDistance(1);
     
     //set initial positions
     segments.forEach(function(d) {
@@ -154,6 +165,14 @@ function update() {
         .attr("y1", yScale(d3.min(_segments, yValue)))
         .attr("x2", xScale(d3.min(_segments, xValue)))
         .attr("y2", yScale(d3.max(_segments, yValue)));
+    hbar.transition().ease("cubic-in-out").duration(500)
+        .attr("y1",yScale(1))
+        .attr("y2",yScale(1));
+    
+    vbar.transition().ease("cubic-in-out").duration(500)
+        .attr("x1", xScale(d3.mean(_segments, xValue)))
+        .attr("x2", xScale(d3.mean(_segments, xValue)));
+    
     
   // draw dots
   var dot = svg.selectAll(".dot")
