@@ -8,8 +8,11 @@ var format = d3.format(",d"),
     _yDomain,
     hbar,
     vbar,
+    dbar,
     brushCell,
-    topObject = {};
+    topObject = {},
+    padding = 1, // separation between nodes
+    rad = 10;
 
 var margin = {top: 20, right: 20, bottom: 30, left: 40},
     width = 1000 - margin.left - margin.right,
@@ -29,12 +32,12 @@ var yValue = function(d) { return d.Lift;}, // data -> value
 
 // setup r
 var rValue = function(d) { return d.Importance; },
-    rScale = d3.scale.linear().range([3, 20]),
+    rScale = d3.scale.linear().range([rad, rad]),
     rMap = function(d) { return rScale(rValue(d)); };
 
 // setup fill color
 var cValue = function(d) { return d.parent.parent.Name; },
-    color = d3.scale.category10();
+    color = d3.scale.ordinal().range(colorbrewer.Set2[7]);;
 
 // setup brush
 var brush = d3.svg.brush()
@@ -108,20 +111,14 @@ d3.json("McAfeeDataImportance.json", function(error, json) {
     .attr("class", "y axis")
     .call(yAxis)
     
-  hbar = svg.append("line")
+  
+  dbar = svg.append("line")
         .attr("x1", 0)
         .attr("x2", width)
         .attr("y1", height)
         .attr("y2", height)
         .classed("lift-line", true);
     
-  vbar = svg.append("line")
-        .attr("x1", 0)
-        .attr("x2", 0)
-        .attr("y1", 0)
-        .attr("y2", height)
-        .classed("lift-line", true);
-  
     update();
     
 
@@ -135,14 +132,28 @@ function update() {
     yScale.domain([d3.min(segments, yValue), d3.max(segments, yValue)]);
     rScale.domain([d3.min(segments, rValue), d3.max(segments, rValue)]);
 
-    hbar.transition().ease("cubic-in-out").duration(500)
-        .attr("y1",yScale(1))
-        .attr("y2",yScale(1));
+    var force = d3.layout.force()
+        .nodes(segments, function(d) {
+            return d.NodeID;  
+        })
+        .size([width, height])
+        .on("tick", tick)
+        .charge(-1)
+        .gravity(0)
+        .chargeDistance(5);
     
-    vbar.transition().ease("cubic-in-out").duration(500)
-        .attr("x1", xScale(d3.mean(_segments, xValue)))
-        .attr("x2", xScale(d3.mean(_segments, xValue)));
+    //set initial positions
+    segments.forEach(function(d) {
+        d.x = xMap(d);
+        d.y = yMap(d);
+        d.radius = rMap(d);
+    });
     
+    dbar.transition().ease("cubic-in-out").duration(500)
+        .attr("x1", xScale(d3.max(_segments, xValue)))
+        .attr("y1", yScale(d3.min(_segments, yValue)))
+        .attr("x2", xScale(d3.min(_segments, xValue)))
+        .attr("y2", yScale(d3.max(_segments, yValue)));
     
   // draw dots
   var dot = svg.selectAll(".dot")
@@ -220,8 +231,52 @@ function update() {
     
     legend.exit().remove();
   
-    axisTransition()
+    axisTransition();
+    force.start();
 };
+
+function tick(e) {
+    var dot = svg.selectAll(".dot")
+    dot.each(moveTowardDataPosition(e.alpha));
+    dot.each(collide(e.alpha));
+    dot.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+};
+
+function moveTowardDataPosition(alpha) {
+    return function(d) {
+        d.x += (xMap(d) - d.x) * 0.1 * alpha;
+        d.y += (yMap(d) - d.y) * 0.1 * alpha;
+    };
+};
+
+// Resolve collisions between nodes.
+function collide(alpha) {
+    var quadtree = d3.geom.quadtree(segments);
+    return function(d) {
+        var r = d.radius + rad + padding,
+        nx1 = d.x - r,
+        nx2 = d.x + r,
+        ny1 = d.y - r,
+        ny2 = d.y + r;
+        quadtree.visit(function(quad, x1, y1, x2, y2) {
+            if (quad.point && (quad.point !== d)) {
+                var x = d.x - quad.point.x,
+                    y = d.y - quad.point.y,
+                    l = Math.sqrt(x * x + y * y),
+                    r = d.radius + quad.point.radius + padding;
+                if (l < r) {
+                    l = (l - r) / l * alpha;
+                    d.x -= x *= l;
+                    d.y -= y *= l;
+                    quad.point.x += x;
+                    quad.point.y += y;
+                }
+            }
+            return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+        });
+    };
+}
 
 function axisTransition() {
   xAxisSelect.transition().tween("axis", function(d, i) {
