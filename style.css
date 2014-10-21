@@ -1,0 +1,61 @@
+body {
+    font: 11px sans-serif;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.dot {
+    fill-opacity: 2;
+    transform: scale(1);
+    transition-property: fill-opacity;
+    transition-duration: .2s;
+    transform-origin: center;
+}
+
+.dot.diminish{
+    transition-property: fill-opacity, fill;
+    transform: scale(.99);
+    transition-duration: .4s;
+    fill: #eee !important;
+}
+
+.tooltip {
+    position: absolute;
+    pointer-events: none;
+    background-color: #9ccffa;
+    padding: 5px;
+    border-radius: 5px;
+}
+
+.tooltip .name{
+    font: 14px sans-serif;
+    font-weight: bold;
+}
+
+.tooltip .feature{
+    padding-bottom: 5px;
+    font-style: italic;
+}
+
+.tooltip .lift{
+
+}
+
+.tooltip .freq{
+
+}
+
+.lift-line{
+    stroke-width: 1px;
+    stroke: red;
+}
+
+.brush .extent {
+    fill-opacity: .1;
+    shape-rendering: crispEdges;
+}
